@@ -1,18 +1,20 @@
-"""SSH tool — reach any machine on SW's network."""
+"""SSH tool — reach any machine on the home network."""
 import subprocess
+import os
 
-HOSTS = {
-    'dead-reckoning': ('sh1pwr3ck', '10.34.43.5'),
-    'macbook':        ('sh1pwr3ck', '10.34.43.7'),
-    'mint':           ('sh1pwr3ck', '10.34.43.9'),
-    'ubuntuserver':   ('root',       '10.34.43.11'),
-    'noble-wordpress':('root',       '10.34.43.12'),
-    'frigate':        ('sh1pwr3ck', '10.34.43.31'),
-    'kali':           ('sh1pwr3ck', '10.34.43.41'),
-    'hacktop':        ('sh1pwr3ck', '10.34.43.45'),
-    'proxmox':        ('root',       '10.34.43.244'),
-    'linode':         ('root',       '194.195.212.217'),
-}
+import json
+
+def _load_hosts() -> dict:
+    """Load hosts from HOSTS_CONFIG env var (JSON) or fall back to empty."""
+    raw = os.getenv("HOSTS_CONFIG", "")
+    if raw:
+        try:
+            return json.loads(raw)
+        except Exception:
+            pass
+    return {}
+
+HOSTS = _load_hosts()
 
 SSH_OPTS = [
     '-o', 'StrictHostKeyChecking=no',
