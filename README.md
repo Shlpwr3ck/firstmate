@@ -31,7 +31,7 @@ Personal AI assistant for home lab and small business management. Telegram bot p
 
 - Python 3.12
 - [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) v21
-- LLM API (Anthropic-compatible) — default: haiku
+- LLM API — default: haiku
 - [Ollama](https://ollama.ai/) (llama3.2 fallback)
 - Docker + docker-compose
 
