@@ -1,15 +1,14 @@
-"""File system access — restricted to SW's home directory."""
+"""File system access — restricted to the configured home directory."""
 import os
 import glob as glob_module
 
-ALLOWED_BASE = '/home/sh1pwr3ck'
+ALLOWED_BASE = os.getenv("HOME", "/home/user")
 
 BLOCKED = [
-    '/home/sh1pwr3ck/firstmate/.env',
-    '/home/sh1pwr3ck/.msmtprc',
-    '/home/sh1pwr3ck/.claude/.credentials.json',
-    '/home/sh1pwr3ck/.ssh/id_rsa',
-    '/home/sh1pwr3ck/.ssh/id_ed25519',
+    os.path.join(ALLOWED_BASE, 'firstmate/.env'),
+    os.path.join(ALLOWED_BASE, '.msmtprc'),
+    os.path.join(ALLOWED_BASE, '.ssh/id_rsa'),
+    os.path.join(ALLOWED_BASE, '.ssh/id_ed25519'),
 ]
 
 

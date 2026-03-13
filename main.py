@@ -1,6 +1,6 @@
 """
-1st Mate (1m) — Personal AI Assistant for SW (sh1pwr3ck)
-Telegram bot | Claude API + Ollama fallback | Full tool suite
+1st Mate (1m) — Personal AI Assistant
+Telegram bot | LLM API + Ollama fallback | Full tool suite
 """
 
 import os
@@ -23,14 +23,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN        = os.getenv("TELEGRAM_BOT_TOKEN")
-ALLOWED_USER_ID  = int(os.getenv("ALLOWED_USER_ID"))
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-OLLAMA_MODEL     = os.getenv("OLLAMA_MODEL", "llama3.2")
-OLLAMA_HOST      = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
-MODEL            = os.getenv("CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+BOT_TOKEN       = os.getenv("TELEGRAM_BOT_TOKEN")
+ALLOWED_USER_ID = int(os.getenv("ALLOWED_USER_ID"))
+LLM_API_KEY     = os.getenv("LLM_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_HOST     = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+MODEL           = os.getenv("LLM_MODEL", "claude-haiku-4-5-20251001")
 
-claude = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+llm = anthropic.Anthropic(api_key=LLM_API_KEY)
 
 # In-session conversation history
 conversation_history: dict[int, list] = {}
@@ -73,10 +73,10 @@ async def send_long_message(update: Update, text: str):
         await update.message.reply_text(text[i:i + max_len])
 
 
-def run_claude_with_tools(messages: list) -> str:
-    """Agentic loop: Claude calls tools until it has a final answer."""
+def run_with_tools(messages: list) -> str:
+    """Agentic loop: LLM calls tools until it has a final answer."""
     for iteration in range(8):
-        response = claude.messages.create(
+        response = llm.messages.create(
             model=MODEL,
             max_tokens=2048,
             system=SYSTEM_PROMPT,
@@ -87,7 +87,7 @@ def run_claude_with_tools(messages: list) -> str:
         if response.stop_reason == "end_turn":
             for block in response.content:
                 if hasattr(block, 'text'):
-                    logger.info(f"Claude OK — {response.usage.input_tokens} in / {response.usage.output_tokens} out (iter {iteration+1})")
+                    logger.info(f"LLM OK — {response.usage.input_tokens} in / {response.usage.output_tokens} out (iter {iteration+1})")
                     return block.text
             return "(no response)"
 
@@ -128,15 +128,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
-    # Try Claude with tools
+    # Try LLM with tools
     try:
         messages = list(conversation_history[user_id])
-        reply = run_claude_with_tools(messages)
-        # Update history with final assistant message only
+        reply = run_with_tools(messages)
         conversation_history[user_id].append({"role": "assistant", "content": reply})
 
-    except Exception as claude_error:
-        logger.warning(f"Claude failed: {claude_error} — falling back to Ollama")
+    except Exception as llm_error:
+        logger.warning(f"LLM failed: {llm_error} — falling back to Ollama")
         try:
             client = ollama_client.Client(host=OLLAMA_HOST)
             resp = client.chat(
@@ -148,7 +147,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.info("Ollama fallback OK")
         except Exception as ollama_error:
             logger.error(f"Both failed: {ollama_error}")
-            reply = "Both Claude and Ollama are down. Check logs."
+            reply = "AI unavailable. Check logs."
 
     await send_long_message(update, reply)
 
@@ -156,7 +155,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_authorized(update.effective_user.id):
         return
-    await update.message.reply_text("1st Mate online. What do you need, SW?")
+    await update.message.reply_text("1st Mate online. What do you need?")
 
 
 async def clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -173,7 +172,6 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tools_count = len(TOOL_SCHEMAS)
     await update.message.reply_text(
         f"1st Mate — Online\n"
-        f"Brain: Claude API + Ollama fallback\n"
         f"Tools: {tools_count} available\n"
         f"Session messages: {history_count}\n"
         f"Commands: /start /clear /status"
@@ -183,8 +181,8 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     if not BOT_TOKEN:
         raise ValueError("TELEGRAM_BOT_TOKEN not set")
-    if not ANTHROPIC_API_KEY:
-        raise ValueError("ANTHROPIC_API_KEY not set")
+    if not LLM_API_KEY:
+        raise ValueError("LLM_API_KEY not set")
 
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))

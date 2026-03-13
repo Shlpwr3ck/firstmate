@@ -1,0 +1,22 @@
+services:
+  firstmate:
+    build: .
+    container_name: firstmate
+    restart: unless-stopped
+    env_file: .env
+    network_mode: host
+    environment:
+      HOME: ${HOST_HOME}
+    volumes:
+      - ./main.py:/app/main.py:ro
+      - ./tools:/app/tools:ro
+      - ./memory:${HOST_HOME}/firstmate/memory:rw
+      - ${HOST_HOME}:${HOST_HOME}:rw
+      - ${HOST_HOME}/.ssh:${HOST_HOME}/.ssh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

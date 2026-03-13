@@ -1,4 +1,4 @@
-"""Tool registry — schemas for Claude + dispatcher."""
+"""Tool registry — schemas for LLM tool use + dispatcher."""
 from .filesystem import read_file, write_file, list_directory, search_files
 from .ssh_tool import ssh_command
 from .email_tool import send_email
