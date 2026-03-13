@@ -6,6 +6,7 @@ from .calendar_tool import get_calendar_events
 from .search import web_search, fetch_webpage
 from .memory import save_memory, get_memory, list_memories, delete_memory
 from .system import get_system_status, check_service, list_docker_containers
+from .github_tool import github
 
 TOOL_SCHEMAS = [
     {
@@ -104,6 +105,13 @@ TOOL_SCHEMAS = [
         }, "required": ["key"]}
     },
     {
+        "name": "github",
+        "description": "Run a gh CLI command against GitHub. Examples: 'repo list', 'pr list', 'issue create', 'repo view Shlpwr3ck/firstmate'.",
+        "input_schema": {"type": "object", "properties": {
+            "command": {"type": "string", "description": "gh CLI arguments, e.g. 'repo list' or 'api user'"}
+        }, "required": ["command"]}
+    },
+    {
         "name": "get_system_status",
         "description": "Get dead-reckoning system health: uptime, disk, memory.",
         "input_schema": {"type": "object", "properties": {}, "required": []}
@@ -138,6 +146,7 @@ def execute_tool(name: str, inputs: dict) -> str:
         "get_memory":            lambda i: get_memory(i["key"]),
         "list_memories":         lambda i: list_memories(),
         "delete_memory":         lambda i: delete_memory(i["key"]),
+        "github":                lambda i: github(i["command"]),
         "get_system_status":     lambda i: get_system_status(),
         "check_service":         lambda i: check_service(i["service"]),
         "list_docker_containers": lambda i: list_docker_containers(),
