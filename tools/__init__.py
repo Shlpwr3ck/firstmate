@@ -3,6 +3,8 @@ from .filesystem import read_file, write_file, list_directory, search_files
 from .ssh_tool import ssh_command
 from .email_tool import send_email
 from .calendar_tool import get_calendar_events
+from .calendar_write import create_calendar_event
+from .calendar_replace import replace_calendar
 from .search import web_search, fetch_webpage
 from .memory import save_memory, get_memory, list_memories, delete_memory
 from .system import get_system_status, check_service, list_docker_containers
@@ -62,6 +64,26 @@ TOOL_SCHEMAS = [
         "input_schema": {"type": "object", "properties": {
             "days_ahead": {"type": "integer", "description": "How many days to look ahead (default 7)"}
         }, "required": []}
+    },
+    {
+        "name": "create_calendar_event",
+        "description": "Add an event to a subscribable ICS calendar hosted at http://10.34.43.11:8088/{calendar_name}.ics. iPhone subscribes to this URL for live updates. Use calendar_name='workouts' for fitness events.",
+        "input_schema": {"type": "object", "properties": {
+            "calendar_name": {"type": "string", "description": "Calendar file name without .ics, e.g. 'workouts'"},
+            "summary": {"type": "string", "description": "Event title"},
+            "start_dt": {"type": "string", "description": "Start datetime: YYYY-MM-DD HH:MM (Eastern)"},
+            "end_dt": {"type": "string", "description": "End datetime: YYYY-MM-DD HH:MM (Eastern)"},
+            "description": {"type": "string", "description": "Event details or workout instructions"},
+            "recurrence": {"type": "string", "description": "Optional RRULE e.g. FREQ=WEEKLY;BYDAY=MO,WE,FR"}
+        }, "required": ["calendar_name", "summary", "start_dt", "end_dt"]}
+    },
+    {
+        "name": "replace_calendar",
+        "description": "Completely replace a calendar ICS file on the server. Use this for weekly workout updates — generate full valid ICS content and push it. calendar_name='workouts' for the fitness calendar.",
+        "input_schema": {"type": "object", "properties": {
+            "calendar_name": {"type": "string", "description": "Calendar name without .ics"},
+            "ics_content": {"type": "string", "description": "Complete valid ICS file content as a string"}
+        }, "required": ["calendar_name", "ics_content"]}
     },
     {
         "name": "web_search",
@@ -140,6 +162,8 @@ def execute_tool(name: str, inputs: dict) -> str:
         "ssh_command":           lambda i: ssh_command(i["host"], i["command"]),
         "send_email":            lambda i: send_email(i["to"], i["subject"], i["body"]),
         "get_calendar_events":   lambda i: get_calendar_events(i.get("days_ahead", 7)),
+        "create_calendar_event": lambda i: create_calendar_event(i["calendar_name"], i["summary"], i["start_dt"], i["end_dt"], i.get("description",""), i.get("recurrence","")),
+        "replace_calendar":      lambda i: replace_calendar(i["calendar_name"], i["ics_content"]),
         "web_search":            lambda i: web_search(i["query"]),
         "fetch_webpage":         lambda i: fetch_webpage(i["url"]),
         "save_memory":           lambda i: save_memory(i["key"], i["value"]),
