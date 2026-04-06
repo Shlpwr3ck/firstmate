@@ -40,9 +40,9 @@ Always note which gym you're programming for at the top of the workout.
 ## BASE PROGRAM
 **Mon/Fri — Strength A + Walk**
 - Squats (barbell in rack)
-- Push-ups or Bench Press
+- Bench Press (no push-ups — Jax does not do floor exercises)
 - Barbell Rows or Cable Rows
-- Planks
+- Band Pallof Press (standing anti-rotation — no floor core work)
 - 5K road walk after lifting
 
 **Wed — Strength B + Walk**
@@ -65,8 +65,8 @@ Every week:
    - Press movements (OHP, Bench): +2.5–5 lbs/week
    - Rows: +5 lbs/week
    - Cable work: +5 lbs/week
-   - Push-ups: +1 rep/set per week until hitting 15 — then add weight vest or move to bench press
-   - Planks: +5 seconds/week
+   - Bench Press: +2.5–5 lbs/week
+   - Band Pallof Press: +1 rep/set per week, then increase band resistance
    - Walk: maintain 5K — add pace or hills as fitness improves
 3. Save updated weights to memory key "workout_progression"
 4. Call replace_calendar to push the updated full ICS with new weights in event descriptions

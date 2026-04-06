@@ -1,6 +1,6 @@
 # 1st Mate (1m)
 
-Personal AI assistant for home lab and small business management. Telegram bot powered by an **LLM API** with **Ollama** local fallback and a full tool suite for managing a home network.
+Personal AI assistant for home lab and small business management. Signal bot powered by an **LLM API** with **Ollama** local fallback and a full tool suite for managing a home network.
 
 ## Features
 
@@ -30,21 +30,23 @@ Personal AI assistant for home lab and small business management. Telegram bot p
 ## Stack
 
 - Python 3.12
-- [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) v21
+- [signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api) (bbernhard)
 - LLM API — default: haiku
 - [Ollama](https://ollama.ai/) (llama3.2 fallback)
 - Docker + docker-compose
 
 ## Setup
 
-1. Copy `.env.example` to `.env` and fill in your values
-2. `docker compose up -d --build`
+1. Register your Signal number with signal-cli (one-time)
+2. Copy `.env.example` to `.env` and fill in your values
+3. `docker compose up -d --build`
 
 ## Environment Variables
 
 ```
-TELEGRAM_BOT_TOKEN=     # From @BotFather
-ALLOWED_USER_ID=        # Your Telegram user ID
+SIGNAL_NUMBER=          # Bot's Signal phone number e.g. +13526918580
+ALLOWED_NUMBER=         # Your personal Signal number
+SIGNAL_API_URL=         # Default: http://localhost:8080
 LLM_API_KEY=            # LLM provider API key
 LLM_MODEL=              # Default: claude-haiku-4-5-20251001
 OLLAMA_HOST=            # Default: http://127.0.0.1:11434
@@ -52,12 +54,15 @@ OLLAMA_MODEL=           # Default: llama3.2
 GITHUB_TOKEN=           # GitHub PAT for gh CLI tool
 GITHUB_USER=            # Your GitHub username
 HOSTS_CONFIG=           # JSON: {"hostname": ["user", "ip"]}
+HOST_HOME=              # Host home directory path e.g. /home/sh1pwr3ck
 ```
 
 ## Architecture
 
 ```
-Telegram → handle_message()
+Signal → receive_signal_messages() (polling)
+              ↓
+         handle_message()
               ↓
          run_with_tools()  ← agentic loop (max 8 iterations)
               ↓

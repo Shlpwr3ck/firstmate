@@ -1,10 +1,23 @@
 services:
+
+  signal-cli-rest-api:
+    image: bbernhard/signal-cli-rest-api:latest
+    container_name: signal-cli-rest-api
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - MODE=native
+    volumes:
+      - ./signal-data:/home/.local/share/signal-cli
+
   firstmate:
     build: .
     container_name: firstmate
     restart: unless-stopped
     env_file: .env
     network_mode: host
+    depends_on:
+      - signal-cli-rest-api
     environment:
       HOME: ${HOST_HOME}
     volumes:
