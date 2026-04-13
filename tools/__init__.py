@@ -9,6 +9,8 @@ from .search import web_search, fetch_webpage
 from .memory import save_memory, get_memory, list_memories, delete_memory
 from .system import get_system_status, check_service, list_docker_containers
 from .github_tool import github
+from .signal_tool import send_signal_file
+from .frigate_tool import frigate_snapshot
 
 TOOL_SCHEMAS = [
     {
@@ -134,6 +136,21 @@ TOOL_SCHEMAS = [
         }, "required": ["command"]}
     },
     {
+        "name": "frigate_snapshot",
+        "description": "Fetch the latest snapshot from a Frigate NVR camera and send it to Jax via Signal. Cameras: front (doorbell), garage, office, kitchen, safe, backdoor.",
+        "input_schema": {"type": "object", "properties": {
+            "camera": {"type": "string", "description": "Camera name: front, garage, office, kitchen, safe, or backdoor"}
+        }, "required": ["camera"]}
+    },
+    {
+        "name": "send_signal_file",
+        "description": "Send a file from the filesystem as a Signal attachment to Jax. Use this when asked to 'send', 'pull', 'share', or 'grab' a file. The file lands in Signal as a downloadable attachment.",
+        "input_schema": {"type": "object", "properties": {
+            "path": {"type": "string", "description": "Absolute path to the file to send"},
+            "caption": {"type": "string", "description": "Optional message to accompany the file"}
+        }, "required": ["path"]}
+    },
+    {
         "name": "get_system_status",
         "description": "Get dead-reckoning system health: uptime, disk, memory.",
         "input_schema": {"type": "object", "properties": {}, "required": []}
@@ -171,6 +188,8 @@ def execute_tool(name: str, inputs: dict) -> str:
         "list_memories":         lambda i: list_memories(),
         "delete_memory":         lambda i: delete_memory(i["key"]),
         "github":                lambda i: github(i["command"]),
+        "send_signal_file":      lambda i: send_signal_file(i["path"], i.get("caption", "")),
+        "frigate_snapshot":      lambda i: frigate_snapshot(i["camera"]),
         "get_system_status":     lambda i: get_system_status(),
         "check_service":         lambda i: check_service(i["service"]),
         "list_docker_containers": lambda i: list_docker_containers(),
