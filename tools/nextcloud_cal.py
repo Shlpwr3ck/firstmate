@@ -234,6 +234,73 @@ def _fmt_dt(raw: str) -> str:
         return raw
 
 
+def delete_calendar_event(summary: str) -> str:
+    """Delete iCloud calendar events whose summary contains the search string."""
+    home_url = _discover_home_url()
+    if not home_url:
+        return "iCloud CalDAV: authentication failed."
+
+    cal_urls = _list_calendar_urls(home_url)
+
+    now     = datetime.now(timezone.utc)
+    dtstart = (now - timedelta(days=7)).strftime("%Y%m%dT%H%M%SZ")
+    dtend   = (now + timedelta(days=365)).strftime("%Y%m%dT%H%M%SZ")
+
+    body = f"""<?xml version="1.0" encoding="utf-8"?>
+<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop><D:getetag/><C:calendar-data/></D:prop>
+  <C:filter>
+    <C:comp-filter name="VCALENDAR">
+      <C:comp-filter name="VEVENT">
+        <C:time-range start="{dtstart}" end="{dtend}"/>
+      </C:comp-filter>
+    </C:comp-filter>
+  </C:filter>
+</C:calendar-query>"""
+
+    deleted = []
+    errors  = []
+
+    for cal_url in cal_urls:
+        try:
+            resp = requests.request(
+                "REPORT", cal_url.rstrip("/") + "/",
+                auth=_auth(),
+                headers={"Content-Type": "application/xml; charset=utf-8", "Depth": "1"},
+                data=body.encode("utf-8"),
+                timeout=20,
+            )
+            if resp.status_code not in (200, 207):
+                continue
+            root = ET.fromstring(resp.text)
+            server_base = "/".join(cal_url.split("/", 3)[:3])
+            for response in root.findall(".//D:response", _NS):
+                cal_data = response.find(".//C:calendar-data", _NS)
+                href_el  = response.find("D:href", _NS)
+                if cal_data is None or not cal_data.text or href_el is None:
+                    continue
+                event = _parse_vevent(cal_data.text)
+                if not event:
+                    continue
+                if summary.lower() in event.get("summary", "").lower():
+                    event_url = href_el.text
+                    if event_url.startswith("/"):
+                        event_url = server_base + event_url
+                    del_resp = requests.delete(event_url, auth=_auth(), timeout=15)
+                    if del_resp.status_code in (200, 204):
+                        deleted.append(event.get("summary", summary))
+                    else:
+                        errors.append(f"DELETE {del_resp.status_code}")
+        except Exception as e:
+            errors.append(str(e))
+
+    if deleted:
+        return f"Deleted {len(deleted)} event(s): {', '.join(deleted)}"
+    if errors:
+        return f"Delete failed: {'; '.join(errors)}"
+    return f"No events found matching '{summary}'"
+
+
 def create_calendar_event(
     summary: str,
     start_dt: str,
@@ -247,13 +314,26 @@ def create_calendar_event(
         return "iCloud CalDAV: could not discover calendar URL. Check ICLOUD_USER and ICLOUD_PASS."
 
     try:
-        start = datetime.strptime(start_dt, "%Y-%m-%d %H:%M")
-        end   = datetime.strptime(end_dt,   "%Y-%m-%d %H:%M")
+        start_naive = datetime.strptime(start_dt, "%Y-%m-%d %H:%M")
+        end_naive   = datetime.strptime(end_dt,   "%Y-%m-%d %H:%M")
     except ValueError as e:
         return f"Date parse error: {e}. Use YYYY-MM-DD HH:MM"
 
+    # Convert Eastern → UTC (EDT=UTC-4, EST=UTC-5); use zoneinfo if available
+    try:
+        from zoneinfo import ZoneInfo
+        eastern = ZoneInfo("America/New_York")
+        utc     = ZoneInfo("UTC")
+        start_utc = start_naive.replace(tzinfo=eastern).astimezone(utc)
+        end_utc   = end_naive.replace(tzinfo=eastern).astimezone(utc)
+    except Exception:
+        # Fallback: assume EDT (UTC-4)
+        from datetime import timedelta
+        start_utc = start_naive + timedelta(hours=4)
+        end_utc   = end_naive   + timedelta(hours=4)
+
     uid     = str(uuid.uuid4())
-    dtstamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    dtstamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
     ics = "\r\n".join([
         "BEGIN:VCALENDAR",
@@ -263,8 +343,8 @@ def create_calendar_event(
         "BEGIN:VEVENT",
         f"UID:{uid}",
         f"DTSTAMP:{dtstamp}",
-        f"DTSTART;TZID=America/New_York:{start.strftime('%Y%m%dT%H%M%S')}",
-        f"DTEND;TZID=America/New_York:{end.strftime('%Y%m%dT%H%M%S')}",
+        f"DTSTART:{start_utc.strftime('%Y%m%dT%H%M%SZ')}",
+        f"DTEND:{end_utc.strftime('%Y%m%dT%H%M%SZ')}",
         f"SUMMARY:{summary}",
         f"DESCRIPTION:{description.replace(chr(10), chr(92) + 'n')}",
         f"LOCATION:{location}",

@@ -2,7 +2,7 @@
 from .filesystem import read_file, write_file, list_directory, search_files
 from .ssh_tool import ssh_command
 from .email_tool import send_email
-from .nextcloud_cal import get_calendar_events, create_calendar_event
+from .nextcloud_cal import get_calendar_events, create_calendar_event, delete_calendar_event
 from .calendar_replace import replace_calendar
 from .search import web_search, fetch_webpage
 from .memory import save_memory, get_memory, list_memories, delete_memory
@@ -10,6 +10,10 @@ from .system import get_system_status, check_service, list_docker_containers
 from .github_tool import github
 from .signal_tool import send_signal_file
 from .frigate_tool import frigate_snapshot
+from .weather_tool import get_weather
+from .reminder_tool import set_reminder, list_reminders, cancel_reminder
+from .pihole_tool import get_pihole_stats
+from .invoiceninja_tool import get_invoices, get_invoice_summary
 
 TOOL_SCHEMAS = [
     {
@@ -76,6 +80,13 @@ TOOL_SCHEMAS = [
             "description": {"type": "string", "description": "Event details or notes"},
             "location": {"type": "string", "description": "Event location"}
         }, "required": ["summary", "start_dt", "end_dt"]}
+    },
+    {
+        "name": "delete_calendar_event",
+        "description": "Delete an event from iCloud Calendar by matching its title. Searches upcoming events and deletes any whose summary contains the search string.",
+        "input_schema": {"type": "object", "properties": {
+            "summary": {"type": "string", "description": "Event title (or partial title) to search and delete"}
+        }, "required": ["summary"]}
     },
     {
         "name": "replace_calendar",
@@ -165,6 +176,50 @@ TOOL_SCHEMAS = [
         "description": "List all running Docker containers on dead-reckoning.",
         "input_schema": {"type": "object", "properties": {}, "required": []}
     },
+    {
+        "name": "get_weather",
+        "description": "Get current weather conditions. Defaults to Dunnellon FL.",
+        "input_schema": {"type": "object", "properties": {
+            "location": {"type": "string", "description": "City/location (default: Dunnellon FL)"}
+        }, "required": []}
+    },
+    {
+        "name": "set_reminder",
+        "description": "Set a timed reminder to be delivered via Signal at the specified time.",
+        "input_schema": {"type": "object", "properties": {
+            "message":   {"type": "string", "description": "Reminder message to send"},
+            "remind_at": {"type": "string", "description": "When to send it: YYYY-MM-DD HH:MM (Eastern)"}
+        }, "required": ["message", "remind_at"]}
+    },
+    {
+        "name": "list_reminders",
+        "description": "List all pending reminders.",
+        "input_schema": {"type": "object", "properties": {}, "required": []}
+    },
+    {
+        "name": "cancel_reminder",
+        "description": "Cancel a pending reminder by keyword match.",
+        "input_schema": {"type": "object", "properties": {
+            "keyword": {"type": "string", "description": "Word or phrase in the reminder to cancel"}
+        }, "required": ["keyword"]}
+    },
+    {
+        "name": "get_pihole_stats",
+        "description": "Get Pi-hole DNS stats: queries today, blocked count, block percentage, top blocked domains.",
+        "input_schema": {"type": "object", "properties": {}, "required": []}
+    },
+    {
+        "name": "get_invoices",
+        "description": "List invoices from Invoice Ninja. status: unpaid | paid | overdue | all",
+        "input_schema": {"type": "object", "properties": {
+            "status": {"type": "string", "description": "Filter: unpaid, paid, overdue, or all (default: unpaid)"}
+        }, "required": []}
+    },
+    {
+        "name": "get_invoice_summary",
+        "description": "Get total outstanding invoice balance from Invoice Ninja.",
+        "input_schema": {"type": "object", "properties": {}, "required": []}
+    },
 ]
 
 
@@ -178,6 +233,7 @@ def execute_tool(name: str, inputs: dict) -> str:
         "send_email":            lambda i: send_email(i["to"], i["subject"], i["body"]),
         "get_calendar_events":   lambda i: get_calendar_events(i.get("days_ahead", 7)),
         "create_calendar_event": lambda i: create_calendar_event(i["summary"], i["start_dt"], i["end_dt"], i.get("description",""), i.get("location","")),
+        "delete_calendar_event": lambda i: delete_calendar_event(i["summary"]),
         "replace_calendar":      lambda i: replace_calendar(i["calendar_name"], i["ics_content"]),
         "web_search":            lambda i: web_search(i["query"]),
         "fetch_webpage":         lambda i: fetch_webpage(i["url"]),
@@ -191,6 +247,13 @@ def execute_tool(name: str, inputs: dict) -> str:
         "get_system_status":     lambda i: get_system_status(),
         "check_service":         lambda i: check_service(i["service"]),
         "list_docker_containers": lambda i: list_docker_containers(),
+        "get_weather":           lambda i: get_weather(i.get("location", "")),
+        "set_reminder":          lambda i: set_reminder(i["message"], i["remind_at"]),
+        "list_reminders":        lambda i: list_reminders(),
+        "cancel_reminder":       lambda i: cancel_reminder(i["keyword"]),
+        "get_pihole_stats":      lambda i: get_pihole_stats(),
+        "get_invoices":          lambda i: get_invoices(i.get("status", "unpaid")),
+        "get_invoice_summary":   lambda i: get_invoice_summary(),
     }
     if name not in dispatch:
         return f"Unknown tool: {name}"
